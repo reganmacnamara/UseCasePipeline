@@ -7,15 +7,20 @@ namespace UseCasePipeline.Extensions
     public static class ServiceCollectionExtensions
     {
         /// <summary>
-        /// Registers the <see cref="UseCaseMediator"/> and scans the provided assemblies
-        /// for all UseCase pipeline components (handlers, validators, authorisers),
-        /// registering each with the DI container.
+        /// Registers the <see cref="UseCaseMediator"/> and automatically discovers all
+        /// UseCase pipeline components (handlers, validators, authorisers) from every
+        /// assembly in the current AppDomain that references UseCasePipeline.
         /// </summary>
-        /// <param name="services">The service collection to register into.</param>
-        /// <param name="assemblies">
-        /// One or more assemblies to scan. Pass the assembly that contains your
-        /// use case implementations, e.g. <c>typeof(MyHandler).Assembly</c>.
-        /// </param>
+        public static IServiceCollection AddUseCasePipeline(this IServiceCollection services)
+        {
+            var assemblies = GetReferencingAssemblies();
+            return services.AddUseCasePipeline(assemblies);
+        }
+
+        /// <summary>
+        /// Registers the <see cref="UseCaseMediator"/> and scans the provided assemblies
+        /// for all UseCase pipeline components (handlers, validators, authorisers).
+        /// </summary>
         public static IServiceCollection AddUseCasePipeline(
             this IServiceCollection services,
             params Assembly[] assemblies)
@@ -50,6 +55,16 @@ namespace UseCasePipeline.Extensions
             }
 
             return services;
+        }
+
+        private static Assembly[] GetReferencingAssemblies()
+        {
+            var pipelineAssemblyName = typeof(IUseCasePipe).Assembly.GetName().FullName;
+
+            return AppDomain.CurrentDomain.GetAssemblies()
+                .Where(a => a.GetReferencedAssemblies()
+                    .Any(r => r.FullName == pipelineAssemblyName))
+                .ToArray();
         }
     }
 }

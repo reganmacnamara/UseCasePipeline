@@ -12,13 +12,13 @@ dotnet add package UseCasePipeline
 
 ### 1. Register the pipeline
 
-In `Program.cs`, pass the assembly that contains your use case implementations:
+In `Program.cs`, call `AddUseCasePipeline()` with no arguments. It automatically scans every assembly in your app that references this library:
 
 ```csharp
 using UseCasePipeline.Extensions;
 using UseCasePipeline.Middleware;
 
-builder.Services.AddUseCasePipeline(typeof(CreateOrderHandler).Assembly);
+builder.Services.AddUseCasePipeline();
 
 var app = builder.Build();
 
