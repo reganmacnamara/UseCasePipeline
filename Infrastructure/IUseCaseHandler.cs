@@ -8,4 +8,16 @@
     {
         Task Handle(TRequest request, CancellationToken cancellationToken);
     }
+
+    /// <summary>
+    /// The Handler of a UseCase. The Handler returns <typeparamref name="TResponse"/>
+    /// </summary>
+    /// <typeparam name="TRequest"></typeparam>
+    /// <typeparam name="TResponse"></typeparam>
+    public interface IUseCaseHandler<TRequest, TResponse> : IUseCasePipe
+        where TRequest : IUseCaseRequest<TResponse>
+        where TResponse : IUseCaseResponse
+    {
+        Task<TResponse> Handle(TRequest request, CancellationToken cancellationToken);
+    }
 }
