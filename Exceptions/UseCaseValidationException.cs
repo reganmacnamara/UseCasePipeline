@@ -7,18 +7,18 @@ namespace UseCasePipeline.Exceptions
     public class UseCaseValidationException : Exception
     {
         /// <summary>Field-keyed validation errors, e.g. { "Email": ["Must not be empty"] }.</summary>
-        public IReadOnlyDictionary<string, string[]> Errors { get; }
+        public IReadOnlyList<(string property, string error)> Errors { get; }
 
         public UseCaseValidationException(string message)
             : base(message)
         {
-            Errors = new Dictionary<string, string[]>();
+            Errors = [];
         }
 
-        public UseCaseValidationException(IDictionary<string, string[]> errors)
+        public UseCaseValidationException(IReadOnlyList<(string property, string error)> errors)
             : base("One or more validation errors occurred.")
         {
-            Errors = new Dictionary<string, string[]>(errors);
+            Errors = errors;
         }
     }
 }
