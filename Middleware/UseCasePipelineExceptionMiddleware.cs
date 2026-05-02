@@ -23,7 +23,7 @@ namespace UseCasePipeline.Middleware
                 await context.Response.WriteAsJsonAsync(new
                 {
                     ex.Message,
-                    ex.Errors
+                    Errors = ex.Errors.Select(e => new { e.property, e.error })
                 });
             }
             catch (UseCaseEntityNotFoundException ex)
