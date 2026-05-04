@@ -1,6 +1,6 @@
 # UseCasePipeline
 
-A lightweight UseCase pipeline library for .NET 8+. Implement clean, structured use cases with built-in support for request validation, entity validation, authorisation, and a mediator — all wired up automatically via DI.
+A lightweight UseCase pipeline library for .NET 8+. Implement clean, structured use cases with built-in support for request validation, entity validation, rule enforcement, authorisation, and a mediator — all wired up automatically via DI.
 
 ## Installation
 
@@ -106,6 +106,21 @@ public class CreateOrderAuthoriser : IUseCaseAuthoriser<CreateOrderRequest>
 }
 ```
 
+**Rule Enforcer** — enforces business rules after validation and before the handler runs:
+
+```csharp
+public class CreateOrderRuleEnforcer : IUseCaseRuleEnforcer<CreateOrderRequest>
+{
+    public Task Enforce(CreateOrderRequest request, CancellationToken cancellationToken)
+    {
+        if (!_orderingRules.CustomerCanPlaceOrder(request.CustomerId))
+            throw new UseCaseRuleViolationException("Customer cannot place orders at this time.");
+
+        return Task.CompletedTask;
+    }
+}
+```
+
 ### 5. Send a request
 
 Inject `UseCaseMediator` and call `Send`. The response type is inferred automatically:
@@ -127,7 +142,7 @@ public class OrdersController(UseCaseMediator mediator) : ControllerBase
 For every `Send` call the pipeline runs stages in this order:
 
 ```
-Authoriser(s) → Request Validator(s) → Entity Validator(s) → Handler
+Authoriser(s) → Request Validator(s) → Entity Validator(s) → Rule Enforcer(s) → Handler
 ```
 
 All stages are optional. Multiple implementations of the same stage are all executed in registration order.
@@ -141,6 +156,7 @@ All stages are optional. Multiple implementations of the same stage are all exec
 | `UseCaseValidationException` | `400 Bad Request` |
 | `UseCaseEntityNotFoundException` | `404 Not Found` |
 | `UseCaseAuthorisationException` | `403 Forbidden` |
+| `UseCaseRuleViolationException` | `400 Bad Request` |
 | Any other exception | Propagates unhandled |
 
 ## Command-style Use Cases (no response)

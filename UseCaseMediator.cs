@@ -62,6 +62,9 @@ namespace UseCasePipeline
 
             foreach (var validator in serviceProvider.GetServices<IUseCaseEntityValidator<TRequest>>())
                 await validator.Validate(request, cancellationToken);
+
+            foreach (var validator in serviceProvider.GetServices<IUseCaseRuleEnforcer<TRequest>>())
+                await validator.Enforce(request, cancellationToken);
         }
     }
 }

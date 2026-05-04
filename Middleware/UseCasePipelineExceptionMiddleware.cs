@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using UseCasePipeline.Exceptions;
 
 namespace UseCasePipeline.Middleware
@@ -44,6 +44,15 @@ namespace UseCasePipeline.Middleware
                     ex.Message
                 });
             }
+            catch (UseCaseRuleViolationException ex)
+            {
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    ex.Message,
+                    Errors = ex.Errors.Select(e => new { e.property, e.error })
+                });
+            }
         }
     }
 
@@ -53,7 +62,8 @@ namespace UseCasePipeline.Middleware
         /// Adds the UseCase pipeline exception handler to the middleware pipeline.
         /// Maps <see cref="UseCaseValidationException"/> → 400,
         /// <see cref="UseCaseEntityNotFoundException"/> → 404, and
-        /// <see cref="UseCaseAuthorisationException"/> → 403.
+        /// <see cref="UseCaseAuthorisationException"/> → 403, and
+        /// <see cref="UseCaseRuleViolationException"/> → 400.
         /// Register this before any other middleware that invokes use cases.
         /// </summary>
         public static IApplicationBuilder UseUseCasePipelineExceptionHandler(
