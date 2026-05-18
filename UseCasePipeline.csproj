@@ -7,7 +7,7 @@
 
     <!-- Package identity -->
     <PackageId>UseCasePipeline</PackageId>
-    <Version>1.0.8</Version>
+    <Version>1.0.9</Version>
     <Authors>reganmac3</Authors>
     <Description>A lightweight UseCase pipeline library. Wire up request validators, entity validators, rule enforcers, authorisers, custom pipes, and handlers via a mediator — with full DI support.</Description>
     <PackageTags>pipeline;usecase;mediator;cqrs;clean-architecture</PackageTags>
@@ -39,7 +39,7 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
   </ItemGroup>
 
 </Project>
