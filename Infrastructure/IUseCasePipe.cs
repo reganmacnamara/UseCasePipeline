@@ -1,10 +1,7 @@
 ﻿namespace UseCasePipeline.Infrastructure
 {
     /// <summary>
-    /// Marks an Interface as a Pipe for the UseCase Pipeline.
+    /// Marker interface for built-in and custom UseCase pipeline stages.
     /// </summary>
-    public interface IUseCasePipe
-    {
-
-    }
+    public interface IUseCasePipe { }
 }

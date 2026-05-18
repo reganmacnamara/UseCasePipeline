@@ -54,6 +54,7 @@ namespace UseCasePipeline
 
         private async Task RunPipes<TRequest>(TRequest request, CancellationToken cancellationToken) where TRequest : IUseCaseRequest
         {
+            // Resolve each stage as a sequence so multiple implementations run in DI registration order.
             foreach (var authoriser in serviceProvider.GetServices<IUseCaseAuthoriser<TRequest>>())
                 await authoriser.Authorise(request, cancellationToken);
 
@@ -65,6 +66,9 @@ namespace UseCasePipeline
 
             foreach (var validator in serviceProvider.GetServices<IUseCaseRuleEnforcer<TRequest>>())
                 await validator.Enforce(request, cancellationToken);
+
+            foreach (var customPipe in serviceProvider.GetServices<IUseCaseCustomPipe<TRequest>>())
+                await customPipe.InvokeAsync(request, cancellationToken);
         }
     }
 }

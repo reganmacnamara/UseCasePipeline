@@ -8,7 +8,7 @@ namespace UseCasePipeline.Extensions
     {
         /// <summary>
         /// Registers the <see cref="UseCaseMediator"/> and automatically discovers all
-        /// UseCase pipeline components (handlers, validators, rule enforcers, authorisers) from every
+        /// UseCase pipeline components (handlers, validators, rule enforcers, authorisers, custom pipes) from every
         /// assembly in the current AppDomain that references UseCasePipeline.
         /// </summary>
         public static IServiceCollection AddUseCasePipeline(this IServiceCollection services)
@@ -19,7 +19,7 @@ namespace UseCasePipeline.Extensions
 
         /// <summary>
         /// Registers the <see cref="UseCaseMediator"/> and scans the provided assemblies
-        /// for all UseCase pipeline components (handlers, validators, rule enforcers, authorisers).
+        /// for all UseCase pipeline components (handlers, validators, rule enforcers, authorisers, custom pipes).
         /// </summary>
         public static IServiceCollection AddUseCasePipeline(
             this IServiceCollection services,
@@ -40,6 +40,7 @@ namespace UseCasePipeline.Extensions
                 typeof(IUseCaseEntityValidator<>),
                 typeof(IUseCaseRuleEnforcer<>),
                 typeof(IUseCaseAuthoriser<>),
+                typeof(IUseCaseCustomPipe<>),
             };
 
             foreach (var type in concreteTypes)

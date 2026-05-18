@@ -1,6 +1,6 @@
 # UseCasePipeline
 
-A lightweight UseCase pipeline library for .NET 8+. Implement clean, structured use cases with built-in support for request validation, entity validation, rule enforcement, authorisation, and a mediator — all wired up automatically via DI.
+A lightweight UseCase pipeline library for .NET 8+. Implement clean, structured use cases with built-in support for request validation, entity validation, rule enforcement, authorisation, custom pipes, and a mediator — all wired up automatically via DI.
 
 ## Installation
 
@@ -121,6 +121,19 @@ public class CreateOrderRuleEnforcer : IUseCaseRuleEnforcer<CreateOrderRequest>
 }
 ```
 
+**Custom Pipe** - runs custom use-case pipeline logic after the built-in authorisation, validation, entity validation, and rule enforcement stages, but before the handler:
+
+```csharp
+public class CreateOrderAuditPipe : IUseCaseCustomPipe<CreateOrderRequest>
+{
+    public Task InvokeAsync(CreateOrderRequest request, CancellationToken cancellationToken)
+    {
+        // custom pipeline logic, such as auditing, enrichment, or instrumentation
+        return Task.CompletedTask;
+    }
+}
+```
+
 ### 5. Send a request
 
 Inject `UseCaseMediator` and call `Send`. The response type is inferred automatically:
@@ -142,10 +155,10 @@ public class OrdersController(UseCaseMediator mediator) : ControllerBase
 For every `Send` call the pipeline runs stages in this order:
 
 ```
-Authoriser(s) → Request Validator(s) → Entity Validator(s) → Rule Enforcer(s) → Handler
+Authoriser(s) -> Request Validator(s) -> Entity Validator(s) -> Rule Enforcer(s) -> Custom Pipe(s) -> Handler
 ```
 
-All stages are optional. Multiple implementations of the same stage are all executed in registration order.
+All stages are optional. Multiple implementations of the same stage are all executed sequentially in registration order.
 
 ## Exception Middleware
 
