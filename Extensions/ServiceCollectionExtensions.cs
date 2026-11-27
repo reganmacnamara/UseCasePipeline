@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+using UseCasePipeline.Infrastructure;
 using UseCasePipeline.Services;
 
 namespace UseCasePipeline.Extensions
@@ -26,6 +27,7 @@ namespace UseCasePipeline.Extensions
             params Assembly[] assemblies)
         {
             services.AddScoped<UseCaseMediator>();
+            services.AddScoped<IUseCasePipeline, OrderedUseCasePipeline>();
 
             var concreteTypes = assemblies
                 .SelectMany(a => a.GetTypes())
