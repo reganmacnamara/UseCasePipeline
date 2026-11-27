@@ -57,4 +57,20 @@ public class ServiceCollectionExtensionsTests
         Assert.NotNull(provider.GetService<UseCaseMediator>());
         Assert.Null(provider.GetService<IUseCaseHandler<FooRequest, FooResponse>>());
     }
+
+    [Fact]
+    public void AddUseCasePipeline_WhenAnAssemblyIsScannedTwice_RegistersEachComponentOnce()
+    {
+        var services = new ServiceCollection();
+        var assembly = typeof(ServiceCollectionExtensionsTests).Assembly;
+
+        services.AddUseCasePipeline(assembly);
+        services.AddUseCasePipeline(assembly, assembly);
+
+        var provider = services.BuildServiceProvider();
+        Assert.Single(provider.GetServices<IUseCaseRequestValidator<FooRequest>>());
+        Assert.Single(provider.GetServices<IUseCaseHandler<FooRequest, FooResponse>>());
+        Assert.Single(provider.GetServices<IUseCasePipe<FooRequest>>().OfType<FooValidator>());
+        Assert.Single(services, descriptor => descriptor.ServiceType == typeof(UseCaseMediator));
+    }
 }

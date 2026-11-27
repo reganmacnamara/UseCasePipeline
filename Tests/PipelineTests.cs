@@ -159,4 +159,20 @@ public class PipelineTests
             new[] { nameof(SharedOrderAuthoriser), nameof(SecondSharedOrderPipe), nameof(FirstSharedOrderPipe) },
             request.Trace);
     }
+
+    [Fact]
+    public async Task Send_WhenAnAssemblyIsRegisteredTwice_RunsEachPipeOnce()
+    {
+        var services = new ServiceCollection();
+        services.AddUseCasePipeline(typeof(PipelineTests).Assembly);
+        services.AddUseCasePipeline(typeof(PipelineTests).Assembly);
+        var mediator = services.BuildServiceProvider().GetRequiredService<UseCaseMediator>();
+        var request = new PingRequest { Name = "world" };
+
+        await mediator.Send(request);
+
+        Assert.Equal(
+            new[] { nameof(PingAuthoriser), nameof(PingValidator), nameof(PingHandler) },
+            request.Trace);
+    }
 }

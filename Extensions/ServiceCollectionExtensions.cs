@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
 using UseCasePipeline.Infrastructure;
 using UseCasePipeline.Services;
@@ -26,12 +27,13 @@ namespace UseCasePipeline.Extensions
             this IServiceCollection services,
             params Assembly[] assemblies)
         {
-            services.AddScoped<UseCaseMediator>();
-            services.AddScoped<IUseCasePipeline, OrderedUseCasePipeline>();
-            services.AddScoped<IUseCasePipeProvider, UseCasePipeProvider>();
-            services.AddSingleton<IUseCaseRequestDispatcher, CachedUseCaseRequestDispatcher>();
+            services.TryAddScoped<UseCaseMediator>();
+            services.TryAddScoped<IUseCasePipeline, OrderedUseCasePipeline>();
+            services.TryAddScoped<IUseCasePipeProvider, UseCasePipeProvider>();
+            services.TryAddSingleton<IUseCaseRequestDispatcher, CachedUseCaseRequestDispatcher>();
 
             var concreteTypes = assemblies
+                .Distinct()
                 .SelectMany(a => a.GetTypes())
                 .Where(t => t.IsClass && !t.IsAbstract)
                 .ToList();
@@ -57,7 +59,7 @@ namespace UseCasePipeline.Extensions
                         .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == openGeneric);
 
                     foreach (var iface in matchingInterfaces)
-                        services.AddTransient(iface, type);
+                        services.TryAddEnumerable(ServiceDescriptor.Transient(iface, type));
                 }
             }
 
