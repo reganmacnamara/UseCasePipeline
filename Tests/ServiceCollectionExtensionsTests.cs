@@ -25,6 +25,11 @@ public class ServiceCollectionExtensionsTests
             => Task.CompletedTask;
     }
 
+    public class FixedAssemblyLocator(params System.Reflection.Assembly[] assemblies) : IUseCaseAssemblyLocator
+    {
+        public IReadOnlyList<System.Reflection.Assembly> LocateAssemblies() => assemblies;
+    }
+
     [Fact]
     public void AddUseCasePipeline_RegistersMediatorAndDiscoveredComponents()
     {
@@ -72,5 +77,30 @@ public class ServiceCollectionExtensionsTests
         Assert.Single(provider.GetServices<IUseCaseHandler<FooRequest, FooResponse>>());
         Assert.Single(provider.GetServices<IUseCasePipe<FooRequest>>().OfType<FooValidator>());
         Assert.Single(services, descriptor => descriptor.ServiceType == typeof(UseCaseMediator));
+    }
+
+    [Fact]
+    public void AddUseCasePipeline_WithNoArguments_RegistersComponentsFromTheApplicationsAssemblies()
+    {
+        var services = new ServiceCollection();
+
+        services.AddUseCasePipeline();
+
+        var provider = services.BuildServiceProvider();
+        Assert.IsType<FooHandler>(provider.GetService<IUseCaseHandler<FooRequest, FooResponse>>());
+        Assert.Single(provider.GetServices<IUseCaseRequestValidator<FooRequest>>());
+    }
+
+    [Fact]
+    public void AddUseCasePipeline_WithAnAssemblyLocator_ScansOnlyTheAssembliesItReturns()
+    {
+        var withTestAssembly = new ServiceCollection();
+        var withNoAssemblies = new ServiceCollection();
+
+        withTestAssembly.AddUseCasePipeline(new FixedAssemblyLocator(typeof(ServiceCollectionExtensionsTests).Assembly));
+        withNoAssemblies.AddUseCasePipeline(new FixedAssemblyLocator());
+
+        Assert.NotNull(withTestAssembly.BuildServiceProvider().GetService<IUseCaseHandler<FooRequest, FooResponse>>());
+        Assert.Null(withNoAssemblies.BuildServiceProvider().GetService<IUseCaseHandler<FooRequest, FooResponse>>());
     }
 }

@@ -26,6 +26,8 @@ var app = builder.Build();
 app.UseUseCasePipelineExceptionHandler();
 ```
 
+The scan follows the assemblies your app's code uses, loading any that aren't loaded yet. If no code in your app uses a type from a project (for example a module wired up only through DI), pass its assembly explicitly: `builder.Services.AddUseCasePipeline(typeof(CreateOrderHandler).Assembly);`
+
 ### 2. Define a request and response
 
 ```csharp
