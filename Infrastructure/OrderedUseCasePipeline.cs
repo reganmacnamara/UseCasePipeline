@@ -1,14 +1,13 @@
-using Microsoft.Extensions.DependencyInjection;
 using UseCasePipeline.Exceptions;
 using UseCasePipeline.Services;
 
 namespace UseCasePipeline.Infrastructure
 {
-    internal sealed class OrderedUseCasePipeline(IServiceProvider serviceProvider) : IUseCasePipeline
+    internal sealed class OrderedUseCasePipeline(IUseCasePipeProvider pipeProvider) : IUseCasePipeline
     {
         public async Task InvokeAsync<TRequest>(TRequest request, CancellationToken cancellationToken) where TRequest : IUseCaseRequest
         {
-            foreach (var _Pipe in serviceProvider.GetServices<IUseCasePipe<TRequest>>().OrderBy(p => p.Order))
+            foreach (var _Pipe in pipeProvider.GetOrderedPipes<TRequest>())
             {
                 await _Pipe.InvokeAsync(request, cancellationToken);
             }
@@ -18,7 +17,7 @@ namespace UseCasePipeline.Infrastructure
             where TRequest : IUseCaseRequest<TResponse>
             where TResponse : IUseCaseResponse
         {
-            foreach (var _Pipe in serviceProvider.GetServices<IUseCasePipe<TRequest>>().OrderBy(p => p.Order))
+            foreach (var _Pipe in pipeProvider.GetOrderedPipes<TRequest>())
             {
                 if (_Pipe is IUseCasePipe<TRequest, TResponse> _Handler)
                     return await _Handler.InvokeAsync(request, cancellationToken);

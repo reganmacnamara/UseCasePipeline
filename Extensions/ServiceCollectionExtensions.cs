@@ -28,6 +28,7 @@ namespace UseCasePipeline.Extensions
         {
             services.AddScoped<UseCaseMediator>();
             services.AddScoped<IUseCasePipeline, OrderedUseCasePipeline>();
+            services.AddScoped<IUseCasePipeProvider, UseCasePipeProvider>();
 
             var concreteTypes = assemblies
                 .SelectMany(a => a.GetTypes())

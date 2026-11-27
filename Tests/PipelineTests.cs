@@ -62,6 +62,33 @@ public class PipelineTests
 
     public class UnhandledRequest : IUseCaseRequest<PingResponse> { }
 
+    public class SharedOrderRequest : IUseCaseRequest
+    {
+        public List<string> Trace { get; } = new();
+    }
+
+    public abstract class SharedOrderTracingPipe : UseCaseCustomPipe<SharedOrderRequest>
+    {
+        public override Task InvokeAsync(SharedOrderRequest request, CancellationToken cancellationToken)
+        {
+            request.Trace.Add(GetType().Name);
+            return Task.CompletedTask;
+        }
+    }
+
+    public class FirstSharedOrderPipe : SharedOrderTracingPipe { }
+
+    public class SecondSharedOrderPipe : SharedOrderTracingPipe { }
+
+    public class SharedOrderAuthoriser : UseCaseAuthoriser<SharedOrderRequest>
+    {
+        public override Task Authorise(SharedOrderRequest request, CancellationToken cancellationToken)
+        {
+            request.Trace.Add(nameof(SharedOrderAuthoriser));
+            return Task.CompletedTask;
+        }
+    }
+
     private static UseCaseMediator BuildMediator()
     {
         var services = new ServiceCollection();
@@ -113,5 +140,23 @@ public class PipelineTests
         var mediator = BuildMediator();
 
         await Assert.ThrowsAsync<UseCaseConfigurationException>(() => mediator.Send(new UnhandledRequest()));
+    }
+
+    [Fact]
+    public async Task Send_WhenPipesShareAnOrder_RunsThemInRegistrationOrder()
+    {
+        var services = new ServiceCollection();
+        services.AddUseCasePipeline(Array.Empty<System.Reflection.Assembly>());
+        services.AddTransient<IUseCasePipe<SharedOrderRequest>, SecondSharedOrderPipe>();
+        services.AddTransient<IUseCasePipe<SharedOrderRequest>, FirstSharedOrderPipe>();
+        services.AddTransient<IUseCasePipe<SharedOrderRequest>, SharedOrderAuthoriser>();
+        var mediator = services.BuildServiceProvider().GetRequiredService<UseCaseMediator>();
+        var request = new SharedOrderRequest();
+
+        await mediator.Send(request);
+
+        Assert.Equal(
+            new[] { nameof(SharedOrderAuthoriser), nameof(SecondSharedOrderPipe), nameof(FirstSharedOrderPipe) },
+            request.Trace);
     }
 }
