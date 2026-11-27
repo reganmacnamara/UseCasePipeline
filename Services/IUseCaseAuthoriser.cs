@@ -1,4 +1,4 @@
-﻿namespace UseCasePipeline.Infrastructure
+﻿namespace UseCasePipeline.Services
 {
     /// <summary>
     /// The Authorisation Handler of a UseCase

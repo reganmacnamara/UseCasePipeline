@@ -1,4 +1,4 @@
-﻿namespace UseCasePipeline.Infrastructure
+﻿namespace UseCasePipeline.Services
 {
     /// <summary>
     /// Marks a class as a request for a UseCase.

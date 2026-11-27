@@ -1,4 +1,4 @@
-﻿namespace UseCasePipeline.Infrastructure
+﻿namespace UseCasePipeline.Services
 {
     /// <summary>
     /// The Handler of a UseCase. Core UseCase logic is to be implemented here.

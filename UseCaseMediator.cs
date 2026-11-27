@@ -1,6 +1,6 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
-using UseCasePipeline.Infrastructure;
+using UseCasePipeline.Services;
 
 namespace UseCasePipeline
 {

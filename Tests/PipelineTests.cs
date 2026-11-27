@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using UseCasePipeline;
 using UseCasePipeline.Exceptions;
 using UseCasePipeline.Extensions;
-using UseCasePipeline.Infrastructure;
+using UseCasePipeline.Services;
 using Xunit;
 
 namespace UseCasePipelineTests;

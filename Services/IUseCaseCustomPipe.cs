@@ -1,4 +1,4 @@
-namespace UseCasePipeline.Infrastructure
+namespace UseCasePipeline.Services
 {
     /// <summary>
     /// A custom pipeline stage for a specific UseCase request.

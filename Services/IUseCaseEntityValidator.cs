@@ -1,4 +1,4 @@
-﻿namespace UseCasePipeline.Infrastructure
+﻿namespace UseCasePipeline.Services
 {
     /// <summary>
     /// The Entity Validator of a UseCase. Used to validate necessary entities exist before they are needed.

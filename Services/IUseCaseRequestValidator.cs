@@ -1,4 +1,4 @@
-﻿namespace UseCasePipeline.Infrastructure
+﻿namespace UseCasePipeline.Services
 {
     /// <summary>
     /// The Request Validator for a UseCase.

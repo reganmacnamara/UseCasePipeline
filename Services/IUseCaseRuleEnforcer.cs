@@ -1,4 +1,4 @@
-﻿namespace UseCasePipeline.Infrastructure
+﻿namespace UseCasePipeline.Services
 {
     /// <summary>
     /// The Rule Enforcer for a UseCase. Used to enforce business rules after validation and before the handler runs.
