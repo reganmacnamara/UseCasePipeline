@@ -89,6 +89,29 @@ public class PipelineTests
         }
     }
 
+    public class SharedOrderHandler : UseCaseHandler<SharedOrderRequest>
+    {
+        public override Task Handle(SharedOrderRequest request, CancellationToken cancellationToken)
+        {
+            request.Trace.Add(nameof(SharedOrderHandler));
+            return Task.CompletedTask;
+        }
+    }
+
+    public class UnhandledCommand : IUseCaseRequest
+    {
+        public List<string> Trace { get; } = new();
+    }
+
+    public class UnhandledCommandAuthoriser : UseCaseAuthoriser<UnhandledCommand>
+    {
+        public override Task Authorise(UnhandledCommand request, CancellationToken cancellationToken)
+        {
+            request.Trace.Add(nameof(UnhandledCommandAuthoriser));
+            return Task.CompletedTask;
+        }
+    }
+
     private static UseCaseMediator BuildMediator()
     {
         var services = new ServiceCollection();
@@ -143,10 +166,22 @@ public class PipelineTests
     }
 
     [Fact]
+    public async Task Send_WhenNoCommandHandlerIsRegistered_ThrowsBeforeAnyPipeRuns()
+    {
+        var mediator = BuildMediator();
+        var request = new UnhandledCommand();
+
+        await Assert.ThrowsAsync<UseCaseConfigurationException>(() => mediator.Send(request));
+
+        Assert.Empty(request.Trace);
+    }
+
+    [Fact]
     public async Task Send_WhenPipesShareAnOrder_RunsThemInRegistrationOrder()
     {
         var services = new ServiceCollection();
         services.AddUseCasePipeline(Array.Empty<System.Reflection.Assembly>());
+        services.AddTransient<IUseCasePipe<SharedOrderRequest>, SharedOrderHandler>();
         services.AddTransient<IUseCasePipe<SharedOrderRequest>, SecondSharedOrderPipe>();
         services.AddTransient<IUseCasePipe<SharedOrderRequest>, FirstSharedOrderPipe>();
         services.AddTransient<IUseCasePipe<SharedOrderRequest>, SharedOrderAuthoriser>();
@@ -156,7 +191,7 @@ public class PipelineTests
         await mediator.Send(request);
 
         Assert.Equal(
-            new[] { nameof(SharedOrderAuthoriser), nameof(SecondSharedOrderPipe), nameof(FirstSharedOrderPipe) },
+            new[] { nameof(SharedOrderAuthoriser), nameof(SecondSharedOrderPipe), nameof(FirstSharedOrderPipe), nameof(SharedOrderHandler) },
             request.Trace);
     }
 

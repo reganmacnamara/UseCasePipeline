@@ -10,6 +10,9 @@ namespace UseCasePipeline.Services
         /// </summary>
         /// <param name="request">The request being processed by the pipeline.</param>
         /// <param name="cancellationToken">A token used to cancel the pipeline operation.</param>
+        /// <exception cref="UseCasePipeline.Exceptions.UseCaseConfigurationException">
+        /// No <see cref="IUseCaseHandler{TRequest}"/> is registered for the request. No pipe is invoked.
+        /// </exception>
         Task InvokeAsync<TRequest>(TRequest request, CancellationToken cancellationToken) where TRequest : IUseCaseRequest;
 
         /// <summary>

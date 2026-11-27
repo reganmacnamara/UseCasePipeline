@@ -7,7 +7,11 @@ namespace UseCasePipeline.Infrastructure
     {
         public async Task InvokeAsync<TRequest>(TRequest request, CancellationToken cancellationToken) where TRequest : IUseCaseRequest
         {
-            foreach (var _Pipe in pipeProvider.GetOrderedPipes<TRequest>())
+            var _Pipes = pipeProvider.GetOrderedPipes<TRequest>();
+            if (!ContainsHandler(_Pipes))
+                throw new UseCaseConfigurationException($"No handler is registered for {typeof(TRequest).Name}.");
+
+            foreach (var _Pipe in _Pipes)
             {
                 await _Pipe.InvokeAsync(request, cancellationToken);
             }
@@ -27,5 +31,8 @@ namespace UseCasePipeline.Infrastructure
 
             throw new UseCaseConfigurationException($"No handler returning {typeof(TResponse).Name} is registered for {typeof(TRequest).Name}.");
         }
+
+        private static bool ContainsHandler<TRequest>(IReadOnlyList<IUseCasePipe<TRequest>> pipes) where TRequest : IUseCaseRequest
+            => pipes.Any(_Pipe => _Pipe is IUseCaseHandler<TRequest>);
     }
 }
