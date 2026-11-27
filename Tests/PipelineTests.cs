@@ -49,6 +49,19 @@ public class PipelineTests
         }
     }
 
+    public class PingAfterHandlerPipe : UseCaseCustomPipe<PingRequest>
+    {
+        public override int Order { get; set; } = 70;
+
+        public override Task InvokeAsync(PingRequest request, CancellationToken cancellationToken)
+        {
+            request.Trace.Add(nameof(PingAfterHandlerPipe));
+            return Task.CompletedTask;
+        }
+    }
+
+    public class UnhandledRequest : IUseCaseRequest<PingResponse> { }
+
     private static UseCaseMediator BuildMediator()
     {
         var services = new ServiceCollection();
@@ -80,5 +93,25 @@ public class PipelineTests
 
         Assert.Contains(nameof(PingValidator), request.Trace);
         Assert.DoesNotContain(nameof(PingHandler), request.Trace);
+    }
+
+    [Fact]
+    public async Task Send_WhenPipeIsOrderedAfterHandler_ReturnsResponseWithoutInvokingIt()
+    {
+        var mediator = BuildMediator();
+        var request = new PingRequest { Name = "world" };
+
+        var response = await mediator.Send(request);
+
+        Assert.Equal("hello world", response.Message);
+        Assert.DoesNotContain(nameof(PingAfterHandlerPipe), request.Trace);
+    }
+
+    [Fact]
+    public async Task Send_WhenNoHandlerIsRegistered_ThrowsConfigurationException()
+    {
+        var mediator = BuildMediator();
+
+        await Assert.ThrowsAsync<UseCaseConfigurationException>(() => mediator.Send(new UnhandledRequest()));
     }
 }

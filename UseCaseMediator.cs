@@ -1,5 +1,6 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using UseCasePipeline.Exceptions;
 using UseCasePipeline.Services;
 
 namespace UseCasePipeline
@@ -37,12 +38,7 @@ namespace UseCasePipeline
         private async Task<TResponse> ExecuteWithResponse<TRequest, TResponse>(TRequest request, CancellationToken cancellationToken)
             where TRequest : IUseCaseRequest<TResponse>
             where TResponse : IUseCaseResponse
-        {
-            await InvokePipeline(request, cancellationToken);
-
-            var handler = serviceProvider.GetRequiredService<IUseCaseHandler<TRequest, TResponse>>();
-            return await handler.Handle(request, cancellationToken);
-        }
+            => await InvokePipelineWithResponse<TRequest, TResponse>(request, cancellationToken);
 
         private async Task Execute<TRequest>(TRequest request, CancellationToken cancellationToken) where TRequest : IUseCaseRequest
             => await InvokePipeline(request, cancellationToken);
@@ -53,6 +49,21 @@ namespace UseCasePipeline
             {
                 await _Pipe.InvokeAsync(request, cancellationToken);
             }
+        }
+
+        private async Task<TResponse> InvokePipelineWithResponse<TRequest, TResponse>(TRequest request, CancellationToken cancellationToken)
+            where TRequest : IUseCaseRequest<TResponse>
+            where TResponse : IUseCaseResponse
+        {
+            foreach (var _Pipe in serviceProvider.GetServices<IUseCasePipe<TRequest>>().OrderBy(p => p.Order))
+            {
+                if (_Pipe is IUseCasePipe<TRequest, TResponse> _Handler)
+                    return await _Handler.InvokeAsync(request, cancellationToken);
+
+                await _Pipe.InvokeAsync(request, cancellationToken);
+            }
+
+            throw new UseCaseConfigurationException($"No handler returning {typeof(TResponse).Name} is registered for {typeof(TRequest).Name}.");
         }
     }
 }
