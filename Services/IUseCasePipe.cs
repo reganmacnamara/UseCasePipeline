@@ -8,12 +8,14 @@
 
     }
     /// <summary>
-    /// Marker interface for built-in and custom UseCase pipeline stages.
+    /// A stage in the UseCase pipeline for <typeparamref name="TRequest"/>. Every pipe registered
+    /// for the request is invoked in ascending <see cref="Order"/>.
     /// </summary>
     public interface IUseCasePipe<TRequest> : IUseCasePipe where TRequest : IUseCaseRequest
     {
         /// <summary>
-        /// The order the Pipes of the Pipeline should be Invoked
+        /// The position of this pipe in the pipeline. Pipes run in ascending order, and pipes
+        /// with the same order run in registration order.
         /// </summary>
         public int Order { get; set; }
 
