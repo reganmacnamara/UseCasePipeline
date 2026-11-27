@@ -26,10 +26,12 @@ var app = builder.Build();
 app.UseUseCasePipelineExceptionHandler();
 ```
 
+The scan follows the assemblies your app's code uses, loading any that aren't loaded yet. If no code in your app uses a type from a project (for example a module wired up only through DI), pass its assembly explicitly: `builder.Services.AddUseCasePipeline(typeof(CreateOrderHandler).Assembly);`
+
 ### 2. Define a request and response
 
 ```csharp
-using UseCasePipeline.Infrastructure;
+using UseCasePipeline.Services;
 
 public class CreateOrderRequest : IUseCaseRequest<CreateOrderResponse>
 {
@@ -48,9 +50,9 @@ public class CreateOrderResponse : IUseCaseResponse
 ```csharp
 using UseCasePipeline.Infrastructure;
 
-public class CreateOrderHandler : IUseCaseHandler<CreateOrderRequest, CreateOrderResponse>
+public class CreateOrderHandler : UseCaseHandler<CreateOrderRequest, CreateOrderResponse>
 {
-    public async Task<CreateOrderResponse> Handle(CreateOrderRequest request, CancellationToken cancellationToken)
+    public override async Task<CreateOrderResponse> Handle(CreateOrderRequest request, CancellationToken cancellationToken)
     {
         // core use case logic
         return new CreateOrderResponse { OrderId = Guid.NewGuid() };
@@ -65,9 +67,9 @@ All stages are optional. Register as many as you need per use case.
 **Request Validator** — validates the incoming request data:
 
 ```csharp
-public class CreateOrderRequestValidator : IUseCaseRequestValidator<CreateOrderRequest>
+public class CreateOrderRequestValidator : UseCaseRequestValidator<CreateOrderRequest>
 {
-    public Task Validate(CreateOrderRequest request, CancellationToken cancellationToken)
+    public override Task Validate(CreateOrderRequest request, CancellationToken cancellationToken)
     {
         if (request.ProductIds.Count == 0)
             throw new UseCaseValidationException("At least one product is required.");
@@ -80,9 +82,9 @@ public class CreateOrderRequestValidator : IUseCaseRequestValidator<CreateOrderR
 **Entity Validator** — checks required entities exist before the handler runs:
 
 ```csharp
-public class CreateOrderEntityValidator : IUseCaseEntityValidator<CreateOrderRequest>
+public class CreateOrderEntityValidator : UseCaseEntityValidator<CreateOrderRequest>
 {
-    public async Task Validate(CreateOrderRequest request, CancellationToken cancellationToken)
+    public override async Task Validate(CreateOrderRequest request, CancellationToken cancellationToken)
     {
         var customer = await _repo.FindCustomerAsync(request.CustomerId);
         if (customer is null)
@@ -94,9 +96,9 @@ public class CreateOrderEntityValidator : IUseCaseEntityValidator<CreateOrderReq
 **Authoriser** — enforces permissions:
 
 ```csharp
-public class CreateOrderAuthoriser : IUseCaseAuthoriser<CreateOrderRequest>
+public class CreateOrderAuthoriser : UseCaseAuthoriser<CreateOrderRequest>
 {
-    public Task Authorise(CreateOrderRequest request, CancellationToken cancellationToken)
+    public override Task Authorise(CreateOrderRequest request, CancellationToken cancellationToken)
     {
         if (!_currentUser.CanCreateOrders)
             throw new UseCaseAuthorisationException();
@@ -109,9 +111,9 @@ public class CreateOrderAuthoriser : IUseCaseAuthoriser<CreateOrderRequest>
 **Rule Enforcer** — enforces business rules after validation and before the handler runs:
 
 ```csharp
-public class CreateOrderRuleEnforcer : IUseCaseRuleEnforcer<CreateOrderRequest>
+public class CreateOrderRuleEnforcer : UseCaseRuleEnforcer<CreateOrderRequest>
 {
-    public Task Enforce(CreateOrderRequest request, CancellationToken cancellationToken)
+    public override Task Enforce(CreateOrderRequest request, CancellationToken cancellationToken)
     {
         if (!_orderingRules.CustomerCanPlaceOrder(request.CustomerId))
             throw new UseCaseRuleViolationException("Customer cannot place orders at this time.");
@@ -124,9 +126,9 @@ public class CreateOrderRuleEnforcer : IUseCaseRuleEnforcer<CreateOrderRequest>
 **Custom Pipe** - runs custom use-case pipeline logic after the built-in authorisation, validation, entity validation, and rule enforcement stages, but before the handler:
 
 ```csharp
-public class CreateOrderAuditPipe : IUseCaseCustomPipe<CreateOrderRequest>
+public class CreateOrderAuditPipe : UseCaseCustomPipe<CreateOrderRequest>
 {
-    public Task InvokeAsync(CreateOrderRequest request, CancellationToken cancellationToken)
+    public override Task InvokeAsync(CreateOrderRequest request, CancellationToken cancellationToken)
     {
         // custom pipeline logic, such as auditing, enrichment, or instrumentation
         return Task.CompletedTask;
@@ -160,6 +162,8 @@ Authoriser(s) -> Request Validator(s) -> Entity Validator(s) -> Rule Enforcer(s)
 
 All stages are optional. Multiple implementations of the same stage are all executed sequentially in registration order.
 
+Pipes run in ascending `Order`. Each base class sets a default: Authoriser `10`, Request Validator `20`, Entity Validator `30`, Rule Enforcer `40`, Custom Pipe `50`, Handler `60`. Override `Order` to move a pipe, or implement the stage interface (for example `IUseCaseAuthoriser<TRequest>`) directly and set your own `Order`.
+
 ## Exception Middleware
 
 `UseUseCasePipelineExceptionHandler()` catches pipeline exceptions and maps them to HTTP responses:
@@ -174,7 +178,7 @@ All stages are optional. Multiple implementations of the same stage are all exec
 
 ## Command-style Use Cases (no response)
 
-For use cases that produce no result, implement `IUseCaseRequest` and `IUseCaseHandler<TRequest>` directly:
+For use cases that produce no result, implement `IUseCaseRequest` and inherit `UseCaseHandler<TRequest>`:
 
 ```csharp
 public class DeleteOrderRequest : IUseCaseRequest
@@ -182,9 +186,9 @@ public class DeleteOrderRequest : IUseCaseRequest
     public Guid OrderId { get; set; }
 }
 
-public class DeleteOrderHandler : IUseCaseHandler<DeleteOrderRequest>
+public class DeleteOrderHandler : UseCaseHandler<DeleteOrderRequest>
 {
-    public async Task Handle(DeleteOrderRequest request, CancellationToken cancellationToken)
+    public override async Task Handle(DeleteOrderRequest request, CancellationToken cancellationToken)
     {
         // delete logic
     }

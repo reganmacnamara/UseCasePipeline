@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
 using UseCasePipeline.Infrastructure;
+using UseCasePipeline.Services;
 
 namespace UseCasePipeline.Extensions
 {
@@ -9,13 +11,17 @@ namespace UseCasePipeline.Extensions
         /// <summary>
         /// Registers the <see cref="UseCaseMediator"/> and automatically discovers all
         /// UseCase pipeline components (handlers, validators, rule enforcers, authorisers, custom pipes) from every
-        /// assembly in the current AppDomain that references UseCasePipeline.
+        /// assembly the application references that references UseCasePipeline, loading any that aren't loaded yet.
         /// </summary>
         public static IServiceCollection AddUseCasePipeline(this IServiceCollection services)
-        {
-            var assemblies = GetReferencingAssemblies();
-            return services.AddUseCasePipeline(assemblies);
-        }
+            => services.AddUseCasePipeline(new ApplicationAssemblyLocator());
+
+        /// <summary>
+        /// Registers the <see cref="UseCaseMediator"/> and scans the assemblies found by
+        /// <paramref name="assemblyLocator"/> for all UseCase pipeline components.
+        /// </summary>
+        public static IServiceCollection AddUseCasePipeline(this IServiceCollection services, IUseCaseAssemblyLocator assemblyLocator)
+            => services.AddUseCasePipeline(assemblyLocator.LocateAssemblies().ToArray());
 
         /// <summary>
         /// Registers the <see cref="UseCaseMediator"/> and scans the provided assemblies
@@ -25,15 +31,20 @@ namespace UseCasePipeline.Extensions
             this IServiceCollection services,
             params Assembly[] assemblies)
         {
-            services.AddScoped<UseCaseMediator>();
+            services.TryAddScoped<UseCaseMediator>();
+            services.TryAddScoped<IUseCasePipeline, OrderedUseCasePipeline>();
+            services.TryAddScoped<IUseCasePipeProvider, UseCasePipeProvider>();
+            services.TryAddSingleton<IUseCaseRequestDispatcher, CachedUseCaseRequestDispatcher>();
 
             var concreteTypes = assemblies
+                .Distinct()
                 .SelectMany(a => a.GetTypes())
                 .Where(t => t.IsClass && !t.IsAbstract)
                 .ToList();
 
             var openGenerics = new[]
             {
+                typeof(IUseCasePipe<>),
                 typeof(IUseCaseHandler<>),
                 typeof(IUseCaseHandler<,>),
                 typeof(IUseCaseRequestValidator<>),
@@ -52,21 +63,11 @@ namespace UseCasePipeline.Extensions
                         .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == openGeneric);
 
                     foreach (var iface in matchingInterfaces)
-                        services.AddTransient(iface, type);
+                        services.TryAddEnumerable(ServiceDescriptor.Transient(iface, type));
                 }
             }
 
             return services;
-        }
-
-        private static Assembly[] GetReferencingAssemblies()
-        {
-            var pipelineAssemblyName = typeof(IUseCasePipe).Assembly.GetName().FullName;
-
-            return AppDomain.CurrentDomain.GetAssemblies()
-                .Where(a => a.GetReferencedAssemblies()
-                    .Any(r => r.FullName == pipelineAssemblyName))
-                .ToArray();
         }
     }
 }

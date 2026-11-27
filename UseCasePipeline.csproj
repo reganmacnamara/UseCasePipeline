@@ -7,7 +7,7 @@
 
     <!-- Package identity -->
     <PackageId>UseCasePipeline</PackageId>
-    <Version>1.1.0</Version>
+    <Version>2.0.0</Version>
     <Authors>reganmac3</Authors>
     <Description>A lightweight UseCase pipeline library. Wire up request validators, entity validators, rule enforcers, authorisers, custom pipes, and handlers via a mediator — with full DI support.</Description>
     <PackageTags>pipeline;usecase;mediator;cqrs;clean-architecture</PackageTags>

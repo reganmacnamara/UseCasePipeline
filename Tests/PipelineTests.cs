@@ -3,6 +3,7 @@ using UseCasePipeline;
 using UseCasePipeline.Exceptions;
 using UseCasePipeline.Extensions;
 using UseCasePipeline.Infrastructure;
+using UseCasePipeline.Services;
 using Xunit;
 
 namespace UseCasePipelineTests;
@@ -19,9 +20,9 @@ public class PipelineTests
         public List<string> Trace { get; } = new();
     }
 
-    public class PingValidator : IUseCaseRequestValidator<PingRequest>
+    public class PingValidator : UseCaseRequestValidator<PingRequest>
     {
-        public Task Validate(PingRequest request, CancellationToken cancellationToken)
+        public override Task Validate(PingRequest request, CancellationToken cancellationToken)
         {
             request.Trace.Add(nameof(PingValidator));
             if (string.IsNullOrWhiteSpace(request.Name))
@@ -30,21 +31,84 @@ public class PipelineTests
         }
     }
 
-    public class PingAuthoriser : IUseCaseAuthoriser<PingRequest>
+    public class PingAuthoriser : UseCaseAuthoriser<PingRequest>
     {
-        public Task Authorise(PingRequest request, CancellationToken cancellationToken)
+        public override Task Authorise(PingRequest request, CancellationToken cancellationToken)
         {
             request.Trace.Add(nameof(PingAuthoriser));
             return Task.CompletedTask;
         }
     }
 
-    public class PingHandler : IUseCaseHandler<PingRequest, PingResponse>
+    public class PingHandler : UseCaseHandler<PingRequest, PingResponse>
     {
-        public Task<PingResponse> Handle(PingRequest request, CancellationToken cancellationToken)
+        public override Task<PingResponse> Handle(PingRequest request, CancellationToken cancellationToken)
         {
             request.Trace.Add(nameof(PingHandler));
             return Task.FromResult(new PingResponse($"hello {request.Name}"));
+        }
+    }
+
+    public class PingAfterHandlerPipe : UseCaseCustomPipe<PingRequest>
+    {
+        public override int Order { get; set; } = 70;
+
+        public override Task InvokeAsync(PingRequest request, CancellationToken cancellationToken)
+        {
+            request.Trace.Add(nameof(PingAfterHandlerPipe));
+            return Task.CompletedTask;
+        }
+    }
+
+    public class UnhandledRequest : IUseCaseRequest<PingResponse> { }
+
+    public class SharedOrderRequest : IUseCaseRequest
+    {
+        public List<string> Trace { get; } = new();
+    }
+
+    public abstract class SharedOrderTracingPipe : UseCaseCustomPipe<SharedOrderRequest>
+    {
+        public override Task InvokeAsync(SharedOrderRequest request, CancellationToken cancellationToken)
+        {
+            request.Trace.Add(GetType().Name);
+            return Task.CompletedTask;
+        }
+    }
+
+    public class FirstSharedOrderPipe : SharedOrderTracingPipe { }
+
+    public class SecondSharedOrderPipe : SharedOrderTracingPipe { }
+
+    public class SharedOrderAuthoriser : UseCaseAuthoriser<SharedOrderRequest>
+    {
+        public override Task Authorise(SharedOrderRequest request, CancellationToken cancellationToken)
+        {
+            request.Trace.Add(nameof(SharedOrderAuthoriser));
+            return Task.CompletedTask;
+        }
+    }
+
+    public class SharedOrderHandler : UseCaseHandler<SharedOrderRequest>
+    {
+        public override Task Handle(SharedOrderRequest request, CancellationToken cancellationToken)
+        {
+            request.Trace.Add(nameof(SharedOrderHandler));
+            return Task.CompletedTask;
+        }
+    }
+
+    public class UnhandledCommand : IUseCaseRequest
+    {
+        public List<string> Trace { get; } = new();
+    }
+
+    public class UnhandledCommandAuthoriser : UseCaseAuthoriser<UnhandledCommand>
+    {
+        public override Task Authorise(UnhandledCommand request, CancellationToken cancellationToken)
+        {
+            request.Trace.Add(nameof(UnhandledCommandAuthoriser));
+            return Task.CompletedTask;
         }
     }
 
@@ -79,5 +143,71 @@ public class PipelineTests
 
         Assert.Contains(nameof(PingValidator), request.Trace);
         Assert.DoesNotContain(nameof(PingHandler), request.Trace);
+    }
+
+    [Fact]
+    public async Task Send_WhenPipeIsOrderedAfterHandler_ReturnsResponseWithoutInvokingIt()
+    {
+        var mediator = BuildMediator();
+        var request = new PingRequest { Name = "world" };
+
+        var response = await mediator.Send(request);
+
+        Assert.Equal("hello world", response.Message);
+        Assert.DoesNotContain(nameof(PingAfterHandlerPipe), request.Trace);
+    }
+
+    [Fact]
+    public async Task Send_WhenNoHandlerIsRegistered_ThrowsConfigurationException()
+    {
+        var mediator = BuildMediator();
+
+        await Assert.ThrowsAsync<UseCaseConfigurationException>(() => mediator.Send(new UnhandledRequest()));
+    }
+
+    [Fact]
+    public async Task Send_WhenNoCommandHandlerIsRegistered_ThrowsBeforeAnyPipeRuns()
+    {
+        var mediator = BuildMediator();
+        var request = new UnhandledCommand();
+
+        await Assert.ThrowsAsync<UseCaseConfigurationException>(() => mediator.Send(request));
+
+        Assert.Empty(request.Trace);
+    }
+
+    [Fact]
+    public async Task Send_WhenPipesShareAnOrder_RunsThemInRegistrationOrder()
+    {
+        var services = new ServiceCollection();
+        services.AddUseCasePipeline(Array.Empty<System.Reflection.Assembly>());
+        services.AddTransient<IUseCasePipe<SharedOrderRequest>, SharedOrderHandler>();
+        services.AddTransient<IUseCasePipe<SharedOrderRequest>, SecondSharedOrderPipe>();
+        services.AddTransient<IUseCasePipe<SharedOrderRequest>, FirstSharedOrderPipe>();
+        services.AddTransient<IUseCasePipe<SharedOrderRequest>, SharedOrderAuthoriser>();
+        var mediator = services.BuildServiceProvider().GetRequiredService<UseCaseMediator>();
+        var request = new SharedOrderRequest();
+
+        await mediator.Send(request);
+
+        Assert.Equal(
+            new[] { nameof(SharedOrderAuthoriser), nameof(SecondSharedOrderPipe), nameof(FirstSharedOrderPipe), nameof(SharedOrderHandler) },
+            request.Trace);
+    }
+
+    [Fact]
+    public async Task Send_WhenAnAssemblyIsRegisteredTwice_RunsEachPipeOnce()
+    {
+        var services = new ServiceCollection();
+        services.AddUseCasePipeline(typeof(PipelineTests).Assembly);
+        services.AddUseCasePipeline(typeof(PipelineTests).Assembly);
+        var mediator = services.BuildServiceProvider().GetRequiredService<UseCaseMediator>();
+        var request = new PingRequest { Name = "world" };
+
+        await mediator.Send(request);
+
+        Assert.Equal(
+            new[] { nameof(PingAuthoriser), nameof(PingValidator), nameof(PingHandler) },
+            request.Trace);
     }
 }
