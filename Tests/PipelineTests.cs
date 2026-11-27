@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using UseCasePipeline;
 using UseCasePipeline.Exceptions;
 using UseCasePipeline.Extensions;
+using UseCasePipeline.Infrastructure;
 using UseCasePipeline.Services;
 using Xunit;
 
@@ -19,9 +20,9 @@ public class PipelineTests
         public List<string> Trace { get; } = new();
     }
 
-    public class PingValidator : IUseCaseRequestValidator<PingRequest>
+    public class PingValidator : UseCaseRequestValidator<PingRequest>
     {
-        public Task Validate(PingRequest request, CancellationToken cancellationToken)
+        public override Task Validate(PingRequest request, CancellationToken cancellationToken)
         {
             request.Trace.Add(nameof(PingValidator));
             if (string.IsNullOrWhiteSpace(request.Name))
@@ -30,18 +31,18 @@ public class PipelineTests
         }
     }
 
-    public class PingAuthoriser : IUseCaseAuthoriser<PingRequest>
+    public class PingAuthoriser : UseCaseAuthoriser<PingRequest>
     {
-        public Task Authorise(PingRequest request, CancellationToken cancellationToken)
+        public override Task Authorise(PingRequest request, CancellationToken cancellationToken)
         {
             request.Trace.Add(nameof(PingAuthoriser));
             return Task.CompletedTask;
         }
     }
 
-    public class PingHandler : IUseCaseHandler<PingRequest, PingResponse>
+    public class PingHandler : UseCaseHandler<PingRequest, PingResponse>
     {
-        public Task<PingResponse> Handle(PingRequest request, CancellationToken cancellationToken)
+        public override Task<PingResponse> Handle(PingRequest request, CancellationToken cancellationToken)
         {
             request.Trace.Add(nameof(PingHandler));
             return Task.FromResult(new PingResponse($"hello {request.Name}"));

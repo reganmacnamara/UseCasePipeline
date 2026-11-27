@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using UseCasePipeline;
 using UseCasePipeline.Extensions;
+using UseCasePipeline.Infrastructure;
 using UseCasePipeline.Services;
 using Xunit;
 
@@ -12,15 +13,15 @@ public class ServiceCollectionExtensionsTests
     public record FooResponse(int Value) : IUseCaseResponse;
     public class FooRequest : IUseCaseRequest<FooResponse> { }
 
-    public class FooHandler : IUseCaseHandler<FooRequest, FooResponse>
+    public class FooHandler : UseCaseHandler<FooRequest, FooResponse>
     {
-        public Task<FooResponse> Handle(FooRequest request, CancellationToken cancellationToken)
+        public override Task<FooResponse> Handle(FooRequest request, CancellationToken cancellationToken)
             => Task.FromResult(new FooResponse(42));
     }
 
-    public class FooValidator : IUseCaseRequestValidator<FooRequest>
+    public class FooValidator : UseCaseRequestValidator<FooRequest>
     {
-        public Task Validate(FooRequest request, CancellationToken cancellationToken)
+        public override Task Validate(FooRequest request, CancellationToken cancellationToken)
             => Task.CompletedTask;
     }
 
