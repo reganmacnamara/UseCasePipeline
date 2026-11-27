@@ -34,6 +34,7 @@ namespace UseCasePipeline.Extensions
 
             var openGenerics = new[]
             {
+                typeof(IUseCasePipe<>),
                 typeof(IUseCaseHandler<>),
                 typeof(IUseCaseHandler<,>),
                 typeof(IUseCaseRequestValidator<>),

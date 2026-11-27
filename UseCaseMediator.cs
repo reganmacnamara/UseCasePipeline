@@ -38,37 +38,21 @@ namespace UseCasePipeline
             where TRequest : IUseCaseRequest<TResponse>
             where TResponse : IUseCaseResponse
         {
-            await RunPipes(request, cancellationToken);
+            await InvokePipeline(request, cancellationToken);
 
             var handler = serviceProvider.GetRequiredService<IUseCaseHandler<TRequest, TResponse>>();
             return await handler.Handle(request, cancellationToken);
         }
 
         private async Task Execute<TRequest>(TRequest request, CancellationToken cancellationToken) where TRequest : IUseCaseRequest
+            => await InvokePipeline(request, cancellationToken);
+
+        private async Task InvokePipeline<TRequest>(TRequest request, CancellationToken cancellationToken) where TRequest : IUseCaseRequest
         {
-            await RunPipes(request, cancellationToken);
-
-            var handler = serviceProvider.GetRequiredService<IUseCaseHandler<TRequest>>();
-            await handler.Handle(request, cancellationToken);
-        }
-
-        private async Task RunPipes<TRequest>(TRequest request, CancellationToken cancellationToken) where TRequest : IUseCaseRequest
-        {
-            // Resolve each stage as a sequence so multiple implementations run in DI registration order.
-            foreach (var authoriser in serviceProvider.GetServices<IUseCaseAuthoriser<TRequest>>())
-                await authoriser.Authorise(request, cancellationToken);
-
-            foreach (var validator in serviceProvider.GetServices<IUseCaseRequestValidator<TRequest>>())
-                await validator.Validate(request, cancellationToken);
-
-            foreach (var validator in serviceProvider.GetServices<IUseCaseEntityValidator<TRequest>>())
-                await validator.Validate(request, cancellationToken);
-
-            foreach (var validator in serviceProvider.GetServices<IUseCaseRuleEnforcer<TRequest>>())
-                await validator.Enforce(request, cancellationToken);
-
-            foreach (var customPipe in serviceProvider.GetServices<IUseCaseCustomPipe<TRequest>>())
-                await customPipe.InvokeAsync(request, cancellationToken);
+            foreach (var _Pipe in serviceProvider.GetServices<IUseCasePipe<TRequest>>().OrderBy(p => p.Order))
+            {
+                await _Pipe.InvokeAsync(request, cancellationToken);
+            }
         }
     }
 }
